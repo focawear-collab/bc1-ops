@@ -761,7 +761,7 @@ const ControlView = ({ loc, weekStart, days, reporte, toast }) => {
       )}
 
       <div className="grid grid-cols-4 gap-2">
-        {[['Asignadas',st.total,''],['A tiempo',st.ok,'text-emerald-500'],['Atrasadas',st.tarde,'text-amber-500'],['Sin hacer',st.pend,'text-rose-500']].map(([l,v,c])=>(
+        {[['Tareas',st.total,''],['A tiempo',st.ok,'text-emerald-500'],['Atrasadas',st.tarde,'text-amber-500'],['Sin hacer',st.pend,'text-rose-500']].map(([l,v,c])=>(
           <div key={l} className="card border rounded-xl p-2.5 text-center">
             <p className={`text-xl font-black ${c}`}>{v}</p>
             <p className="text-[8px] font-black uppercase tracking-wider dim mt-0.5">{l}</p>
@@ -803,7 +803,7 @@ const ControlView = ({ loc, weekStart, days, reporte, toast }) => {
                 <div key={j} className="flex items-center gap-2 px-3 py-2">
                   {scope==='semana' && <span className="text-[8px] font-black dim w-7 shrink-0 uppercase">{DAY_LABELS[ALL_DAYS.indexOf(f.day_name)]}</span>}
                   <span className="text-[10px] font-black gold w-10 shrink-0">{f.time_due}</span>
-                  <span className="text-[11px] font-bold flex-1 min-w-0 truncate">{f.task_name}</span>
+                  <span className="text-[11px] font-bold flex-1 min-w-0 truncate">{f.task_name}{f.sin_asignar && <span className="ml-1.5 text-[7px] font-black uppercase tracking-wider px-1 py-0.5 rounded border border-amber-500/40 text-amber-500 align-middle">fuera de plan</span>}</span>
                   {f.photo_url && <button onClick={()=>setFoto(f)} className="gold shrink-0"><Icon name="camera" size={13}/></button>}
                   <span className="text-[10px] font-black w-9 text-right shrink-0">{f.done_at?hhmm(f.done_at):'—'}</span>
                   <span className={`text-[8px] font-black px-1.5 py-0.5 rounded border uppercase shrink-0 w-[62px] text-center ${EST[f.est].c}`}>{EST[f.est].t}</span>
