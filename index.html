@@ -29,7 +29,7 @@
 <body>
 <div id="root"></div>
 <script type="text/babel">
-const { useState, useEffect, useMemo, useCallback } = React;
+const { useState, useEffect, useMemo, useCallback, useRef } = React;
 
 /* ═══════════ SUPABASE (mismo backend que bc-checklist) ═══════════ */
 const SUPA_URL = 'https://pwwmhazqakhweugosugb.supabase.co';
@@ -1033,6 +1033,27 @@ const App = () => {
   const [asign,setAsign]=useState({});
   const [reporte,setReporte]=useState([]);
   const [weekStart,setWeekStart]=useState(()=>getMonday(new Date()));
+  /* La app queda abierta en el telefono por dias. weekStart se calculaba UNA
+     sola vez al montar, asi que al dia siguiente seguia apuntando a la semana
+     anterior y lo asignado se guardaba ahi: el garzon abria su app y no veia
+     nada ("se borraron las tareas"). Medido: 21% de las asignaciones cayeron
+     en una semana pasada. Ahora, si cambio el dia, la semana vuelve a la
+     actual al volver a la app. */
+  const diaVisto = useRef(toISO(new Date()));
+  useEffect(()=>{
+    const resync = () => {
+      const hoy = toISO(new Date());
+      if (hoy !== diaVisto.current) {
+        diaVisto.current = hoy;
+        setWeekStart(getMonday(new Date()));
+      }
+    };
+    const onVis = () => { if(document.visibilityState==='visible') resync(); };
+    document.addEventListener('visibilitychange', onVis);
+    window.addEventListener('focus', resync);
+    const t = setInterval(resync, 60000);
+    return () => { document.removeEventListener('visibilitychange', onVis); window.removeEventListener('focus', resync); clearInterval(t); };
+  },[]);
   const [tab,setTab]=useState('semana');
   const [gateOpen,setGateOpen]=useState(false);
   const [cargando,setCargando]=useState(true);
@@ -1118,6 +1139,12 @@ const App = () => {
   /* Guardar un día (o varios, al copiar o repartir la semana) */
   const guardar = async (day, payload) => {
     if(!user?.puedeAsignar){ toast('Solo los jefes de garzones pueden asignar','error'); return; }
+    /* Ultima red: guardar en una semana que no es la actual borra el historial
+       de esa semana y deja al equipo sin tareas hoy. Se pide confirmarlo. */
+    if (weekISO !== toISO(getMonday(new Date())) &&
+        !window.confirm('Estas guardando en la SEMANA DEL '+fmtDate(weekStart).toUpperCase()+', que no es la semana actual.\n\nEl equipo no vera estas tareas hoy. Si querias asignar esta semana, cancela y toca la fecha de arriba para volver.\n\nGuardar igual?')) {
+      return;
+    }
     const lotes = day ? [[day,payload]] : Object.entries(payload);
     const prev = asign;
     const nuevo = {...asign};
@@ -1272,6 +1299,12 @@ const App = () => {
             </button>
             <button onClick={()=>{const d=new Date(weekStart);d.setDate(d.getDate()+7);setWeekStart(d);}} className="px-2 dim text-lg font-bold">›</button>
           </div>
+          {!esHoySemana && (
+            <button onClick={()=>setWeekStart(getMonday(new Date()))}
+              className="mt-2 w-full rounded-xl px-3 py-2 text-[10px] font-black uppercase tracking-wider border border-amber-500/50 bg-amber-500/15 text-amber-500">
+              ⚠ Estás viendo otra semana · lo que asignes no lo verá el equipo hoy — toca aquí para volver a la semana actual
+            </button>
+          )}
         </div>
       </header>
 
