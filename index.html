@@ -407,6 +407,18 @@ const TurnosSheet = ({ loc, turnos, poolTurnos, onSave, onClose, weekStart, user
   const cuenta = (local) => Object.values(g).reduce((a, dd) => a + Object.values(dd).filter(x => x === local).length, 0);
   const nadie = cuenta('BC1') + cuenta('BC2') === 0;
 
+  /* AVISO_HUECOS_V1 — lo que se estaba guardando sin que nadie lo notara */
+  const enDia = (dia, local) => Object.values(g).filter(dd => dd[dia] === local).length;
+  const diasVacios = [];
+  ['BC1','BC2'].forEach(local => {
+    ALL_DAYS.forEach(dia => {
+      if (puede(dia, local) && enDia(dia, local) === 0)
+        diasVacios.push({ local, dia, lbl: DAY_LABELS[ALL_DAYS.indexOf(dia)] });
+    });
+  });
+  const porLocal = (local) => diasVacios.filter(v=>v.local===local).map(v=>v.lbl).join(', ');
+  const sinTurnos = poolTurnos.filter(p => !ALL_DAYS.some(d => (g[p.id]||{})[d]));
+
   const COLOR = { 'BC1': 'bgold text-black border-[color:var(--gold)]',
                   'BC2': 'bg-blue-500 text-white border-blue-500' };
 
@@ -463,6 +475,22 @@ const TurnosSheet = ({ loc, turnos, poolTurnos, onSave, onClose, weekStart, user
         </span>
       </div>
 
+      {!nadie && (diasVacios.length>0 || sinTurnos.length>0) && (
+        <div className="rounded-xl p-3 mb-3" style={{background:'rgba(245,158,11,.10)',border:'1px solid rgba(245,158,11,.45)'}}>
+          <p className="text-[10px] font-black uppercase tracking-wider mb-1.5" style={{color:'#f59e0b'}}>Revisa antes de guardar</p>
+          {porLocal('BC1') && <p className="text-[11px] font-bold">Sin nadie en <b className="gold">BC1</b>: {porLocal('BC1')}.</p>}
+          {porLocal('BC2') && <p className="text-[11px] font-bold">Sin nadie en <b className="text-blue-500">BC2</b>: {porLocal('BC2')}.</p>}
+          {sinTurnos.length>0 && (
+            <p className="text-[11px] font-bold mt-1">
+              Toda la semana libre: {sinTurnos.map(p=>p.name).join(', ')}.
+            </p>
+          )}
+          <p className="text-[10px] dim font-medium mt-1.5">
+            Un día sin nadie es un día sin tareas para ese local, y quien queda fuera de la grilla no recibe ninguna.
+            Si es a propósito, guarda igual.
+          </p>
+        </div>
+      )}
       {nadie && <p className="text-[10px] text-rose-500 font-bold mb-3 text-center">Marca al menos un turno.</p>}
       <button disabled={nadie} onClick={()=>onSave(g)}
         className={`w-full py-3 rounded-xl text-xs font-black uppercase tracking-wider ${nadie?'card2 border dim':'bgold text-black'}`}>
