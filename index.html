@@ -253,7 +253,12 @@ const Login = ({ loc, people, onLogin, onBack, theme, toggleTheme }) => {
       const r = await sbRpc('verify_pin', { p_person: per.id, p_pin: p });
       if (r.data === true) {
         setBusy(false);
-        onLogin({ id:per.id, name:(per.name||'').split(' ')[0], role:per.role, pin:p, puedeAsignar:puedeAsignarRol(per.role) });
+        /* PERMISO_SERVIDOR_V1 — el permiso lo decide salon_can_assign(),
+           no el texto del cargo: asi tambien entra quien esta habilitado
+           por permiso explicito. El cargo queda de respaldo. */
+        const ca = await sbRpc('salon_can_assign', { p_person: per.id });
+        const puede = ca && ca.error ? puedeAsignarRol(per.role) : ca.data === true;
+        onLogin({ id:per.id, name:(per.name||'').split(' ')[0], role:per.role, pin:p, puedeAsignar:puede });
         return;
       }
     }
@@ -453,7 +458,7 @@ const TurnosSheet = ({ loc, turnos, poolTurnos, onSave, onClose, weekStart, user
             <button onClick={()=>tocarFila(p.id)} className="w-[88px] shrink-0 text-left pr-1">
               <span className="text-[11px] font-bold block truncate">{p.name}</span>
               <span className="text-[8px] font-bold dim block truncate">
-                {p.puedeAsignar ? 'jefe' : (p.role||'').replace(/Garz[oó]n[a]?\s*/i,'')}{p.id===userId?' · tú':''}
+                {p.puedeAsignar ? 'asigna' : (p.role||'').replace(/Garz[oó]n[a]?\s*/i,'')}{p.id===userId?' · tú':''}
               </span>
             </button>
             {ALL_DAYS.map(d=>{
@@ -653,7 +658,7 @@ const SemanaView = ({ loc, catalog, equipoPorDia, days, weekStart, asign, guarda
               <div className="flex items-center gap-2 min-w-0">
                 <div className="w-2 h-2 rounded-full shrink-0" style={{background:col}}/>
                 <span className="text-sm font-black uppercase tracking-tight truncate" style={{color:col}}>{p.name}</span>
-                {p.puedeAsignar && <span className="text-[8px] font-black uppercase px-1.5 py-0.5 rounded bgold text-black shrink-0">Jefe</span>}
+                {p.puedeAsignar && <span className="text-[8px] font-black uppercase px-1.5 py-0.5 rounded bgold text-black shrink-0">Asigna</span>}
                 {!p.pinOk && <span className="text-[8px] font-black uppercase px-1.5 py-0.5 rounded bg-rose-500/20 text-rose-500 shrink-0">Sin PIN</span>}
               </div>
               <span className="text-[10px] font-black dim shrink-0">{ids.length}</span>
