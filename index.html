@@ -44,6 +44,13 @@ async function sbRpc(fn, b) {
     return { data: t ? JSON.parse(t) : null };
   } catch (e) { return { error: String(e) }; }
 }
+/* Entrada desde BlackChicken APP: ?bc_sso=<pase>. La base lo acepta en lugar del PIN
+   (verify_pin / salon_pin_ok / salon_login_pase) y vence con la sesión del portal (12 h). */
+let PASE=(()=>{try{const t=new URLSearchParams(location.search).get('bc_sso');
+  if(t){history.replaceState(null,'',location.pathname+location.hash);try{sessionStorage.setItem('bcops_pase',t);}catch(e){}return t;}
+  return sessionStorage.getItem('bcops_pase');}catch(e){return null;}})();
+const paseVivo=()=>{const v=String(PASE||'').split('~');return v.length===6&&v[0]==='sso1'&&Number(v[2])>Date.now();};
+const olvidarPase=()=>{PASE=null;try{sessionStorage.removeItem('bcops_pase');}catch(e){}};
 
 /* ═══════════ CONSTANTES ═══════════ */
 const LOCALES = {
@@ -1288,6 +1295,20 @@ const App = () => {
     cargarCatalogo(); cargarSemana();
   };
 
+  /* Con pase del portal entra sola, sin pedir el PIN */
+  useEffect(()=>{
+    if(!loc||cargando||user||!paseVivo()) return;
+    let vivo=true;
+    (async()=>{
+      const r=await sbRpc('salon_login_pase',{p_cred:PASE});
+      if(!vivo) return;
+      const o=Array.isArray(r.data)&&r.data[0];
+      if(o) setUser({ id:o.id, name:o.name, role:o.role, pin:PASE, puedeAsignar:o.puede_asignar===true });
+      else olvidarPase();
+    })();
+    return ()=>{vivo=false;};
+  },[loc,cargando,user]);
+
   const pickLocal=(id)=>{ setLoc(id); localStorage.setItem('bcops_loc',id); setUser(null); };
   const cambiarLocal=()=>{ setUser(null); setLoc(null); localStorage.removeItem('bcops_loc'); };
 
@@ -1320,7 +1341,7 @@ const App = () => {
             <div className="flex gap-1 shrink-0">
               <button onClick={toggleTheme} className="p-2 rounded-lg dim"><Icon name={theme==='dark'?'sun':'moon'} size={17}/></button>
               <button onClick={cambiarLocal} className="p-2 rounded-lg dim"><Icon name="home" size={17}/></button>
-              <button onClick={()=>setUser(null)} className="p-2 rounded-lg dim"><Icon name="logout" size={17}/></button>
+              <button onClick={()=>{olvidarPase();setUser(null);}} className="p-2 rounded-lg dim"><Icon name="logout" size={17}/></button>
             </div>
           </div>
           <div className="flex items-center justify-between mt-2.5">
